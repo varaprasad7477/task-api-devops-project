@@ -1,0 +1,20 @@
+services:
+  task-api:
+    build:
+      context: .
+    container_name: task-api
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  task-api-tests:
+    build:
+      context: .
+    container_name: task-api-tests
+    command: ["pytest", "-v"]
+    profiles: ["test"]
