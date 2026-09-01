@@ -24,7 +24,7 @@ flowchart TD
     end
 
     subgraph GitHub_API["GitHub Actions REST API"]
-        F[GET /repos/{owner}/{repo}/actions/runs] --> G[Download Run Artifacts & Parse Metrics]
+        F["GET /repos/owner/repo/actions/runs"] --> G[Download Run Artifacts &amp; Parse Metrics]
         G --> H[Sync Service]
     end
 
