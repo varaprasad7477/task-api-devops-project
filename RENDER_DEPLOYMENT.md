@@ -51,7 +51,7 @@ After connecting repository, fill in these fields:
 | **Region** | `Oregon (US West)` or closest to you |
 | **Branch** | `main` |
 | **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `gunicorn -w 4 -b 0.0.0.0:$PORT app.main:create_app()` |
+| **Start Command** | `gunicorn -w 4 -b 0.0.0.0:$PORT app.main:app` |
 
 ### Environment Variables (Optional but Recommended)
 
@@ -266,7 +266,7 @@ https://gatepulse-xyz.onrender.com/report
 ### Issue: "Port already in use"
 **Solution**: Already fixed in start command
 ```
-gunicorn -w 4 -b 0.0.0.0:$PORT app.main:create_app()
+gunicorn -w 4 -b 0.0.0.0:$PORT app.main:app
 ```
 
 ### Issue: "Service spins down"
