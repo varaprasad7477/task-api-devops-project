@@ -254,3 +254,8 @@ task-api-devops-project/
 - **Universal Repository Telemetry**: Engineered a telemetry ingestion engine pulling live workflow runs, job step metrics, and commit logs across public GitHub repositories via GitHub Actions REST API (`/actions/runs`).
 - **Observability Dashboard & Reporting**: Built an interactive single-page monitoring dashboard with Chart.js trendlines, 30-day rolling failure rate calculations, and an executive Quality Audit Report with Markdown/JSON export capabilities.
 - **Enterprise Alerting & Automation**: Implemented Slack webhook notifications triggered on tripped quality gates, generating automated GitHub Actions step summaries and publishing container images to GHCR.
+
+the live link https://gatepulse.onrender.com/
+
+
+
