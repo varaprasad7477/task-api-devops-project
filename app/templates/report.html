@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GatePulse — Executive CI/CD Quality Gate Audit Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        darkbg: '#070b14',
+                        darkcard: '#0f172a',
+                        darkborder: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #070b14;
+            color: #f1f5f9;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.3);
+        }
+        .glow-rose {
+            box-shadow: 0 0 35px -5px rgba(244, 63, 94, 0.3);
+        }
+        @media print {
+            body { background: white !important; color: black !important; }
+            .glass-panel { background: white !important; border: 1px solid #cbd5e1 !important; color: black !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur sticky top-0 z-30 px-6 py-3.5 no-print">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <a href="/dashboard" class="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 hover:scale-105 transition">
+                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                </a>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-base font-bold tracking-tight text-white">GatePulse</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            Audit Executive View
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">CI/CD Quality Standards & Telemetry Intelligence</p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex flex-wrap items-center gap-2.5">
+                <select id="repo-select" onchange="switchRepo(this.value)" class="bg-slate-800 border border-slate-700 text-xs font-semibold rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500">
+                    <!-- Populated dynamically -->
+                </select>
+                <button onclick="copyMarkdown()" id="copy-btn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-copy text-xs"></i> <span>Copy Markdown</span>
+                </button>
+                <button onclick="downloadJson()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-download text-xs"></i> <span>Download JSON</span>
+                </button>
+                <button onclick="window.print()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-print text-xs"></i> <span>Print / PDF</span>
+                </button>
+                <a href="/dashboard" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition shadow-md flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-line text-xs"></i> <span>Dashboard View</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-8 space-y-8 flex-1 w-full">
+
+        <!-- Loading State -->
+        <div id="loading-state" class="py-20 text-center space-y-3">
+            <i class="fa-solid fa-spinner fa-spin text-3xl text-emerald-400"></i>
+            <p class="text-sm text-slate-400">Compiling executive quality audit report...</p>
+        </div>
+
+        <div id="report-content" class="space-y-8 hidden">
+
+            <!-- Hero Assessment Banner -->
+            <div id="hero-banner" class="glass-panel rounded-2xl p-6 sm:p-8 transition duration-300">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="space-y-3">
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <span id="verdict-pill" class="px-3 py-1 text-xs font-bold rounded-full border tracking-wide">
+                                <!-- Populated dynamically -->
+                            </span>
+                            <span id="lang-pill" class="px-2.5 py-0.5 text-xs rounded-md bg-slate-800/80 text-slate-300 border border-slate-700 font-mono">
+                                Python
+                            </span>
+                            <span class="text-xs text-slate-400" id="generated-date">Generated: --</span>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <h1 id="repo-heading" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                                varaprasad7477/task-api-devops-project
+                            </h1>
+                            <a id="github-link" href="#" target="_blank" class="text-slate-400 hover:text-emerald-400 transition" title="Open on GitHub">
+                                <i class="fa-brands fa-github text-xl"></i>
+                            </a>
+                        </div>
+
+                        <p id="repo-description" class="text-xs sm:text-sm text-slate-300 max-w-2xl">
+                            Continuous test suite validation, code coverage analysis, and quality standards enforcement.
+                        </p>
+
+                        <!-- Repo stats -->
+                        <div class="flex flex-wrap items-center gap-4 text-xs text-slate-400 pt-1">
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-star text-amber-400"></i> <strong class="text-white" id="stars-count">--</strong> stars</span>
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-fork text-slate-400"></i> <strong class="text-white" id="forks-count">--</strong> forks</span>
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-indigo-400"></i> <strong class="text-white" id="branch-name">main</strong> branch</span>
+                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> <strong class="text-white" id="runs-analyzed-count">--</strong> runs evaluated</span>
+                        </div>
+                    </div>
+
+                    <!-- Health Score Gauge -->
+                    <div class="flex items-center gap-4 bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl min-w-[240px] justify-between">
+                        <div>
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Health Index</div>
+                            <div class="text-3xl font-extrabold text-white mt-1" id="health-score-val">--/100</div>
+                            <div class="text-xs text-slate-400 mt-0.5">Reliability composite</div>
+                        </div>
+                        <div id="grade-badge" class="w-14 h-14 rounded-2xl flex items-center justify-center font-extrabold text-2xl border shadow-lg">
+                            --
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Metric Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-panel rounded-2xl p-5 shadow-sm space-y-1">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold">
+                        <span>Build Success Rate</span>
+                        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-emerald-400" id="kpi-success">--%</div>
+                    <div class="text-xs text-slate-400" id="kpi-success-sub">Clean pipeline runs</div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-5 shadow-sm space-y-1">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold">
+                        <span>Avg Code Coverage</span>
+                        <i class="fa-solid fa-code-commit text-cyan-400"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-cyan-400" id="kpi-coverage">--%</div>
+                    <div class="text-xs text-slate-400" id="kpi-coverage-sub">Threshold target: &ge; 80.0%</div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-5 shadow-sm space-y-1">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold">
+                        <span>Quality Gate Compliance</span>
+                        <i class="fa-solid fa-shield-check text-indigo-400"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-indigo-400" id="kpi-compliance">--%</div>
+                    <div class="text-xs text-slate-400" id="kpi-compliance-sub">Runs meeting all policies</div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-5 shadow-sm space-y-1">
+                    <div class="flex items-center justify-between text-slate-400 text-xs font-semibold">
+                        <span>Avg Pipeline Runtime</span>
+                        <i class="fa-solid fa-stopwatch text-amber-400"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-amber-400" id="kpi-duration">--s</div>
+                    <div class="text-xs text-slate-400" id="kpi-duration-sub">Execution & testing duration</div>
+                </div>
+            </div>
+
+            <!-- Rule Compliance Evaluation Matrix -->
+            <div class="glass-panel rounded-2xl p-6 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-emerald-400"></i> Quality Standards Rule Matrix
+                        </h2>
+                        <p class="text-xs text-slate-400">Continuous policy verification enforced across all builds</p>
+                    </div>
+                    <span class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
+                        4 Policies Enforced
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-200">
+                        <thead class="bg-slate-800/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                            <tr>
+                                <th class="py-3 px-4">Quality Standard</th>
+                                <th class="py-3 px-4">Required Policy</th>
+                                <th class="py-3 px-4">Latest Actual Result</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4">Diagnostic Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rules-tbody" class="divide-y divide-slate-800">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Risks & Recommendations Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Risk Assessment -->
+                <div class="glass-panel rounded-2xl p-6 border-rose-500/20 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-2 bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/30">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-white">Risk Assessment & Vulnerabilities</h3>
+                            <p class="text-xs text-slate-400">Automated diagnostic risk indicators</p>
+                        </div>
+                    </div>
+                    <ul id="risks-list" class="space-y-2.5 text-xs text-slate-300">
+                        <!-- Populated dynamically -->
+                    </ul>
+                </div>
+
+                <!-- DevOps Recommendations -->
+                <div class="glass-panel rounded-2xl p-6 border-emerald-500/20 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg border border-emerald-500/30">
+                            <i class="fa-solid fa-lightbulb"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-white">Actionable DevOps Recommendations</h3>
+                            <p class="text-xs text-slate-400">Optimization paths to achieve A+ standard</p>
+                        </div>
+                    </div>
+                    <ul id="recs-list" class="space-y-2.5 text-xs text-slate-300">
+                        <!-- Populated dynamically -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Recent Run Audit Log Table -->
+            <div class="glass-panel rounded-2xl p-6 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i> Recent Pipeline Executions Audit Log
+                        </h2>
+                        <p class="text-xs text-slate-400">Historical telemetry audit records</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-200">
+                        <thead class="bg-slate-800/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                            <tr>
+                                <th class="py-3 px-4">Run #</th>
+                                <th class="py-3 px-4">Branch</th>
+                                <th class="py-3 px-4">CI Status</th>
+                                <th class="py-3 px-4">Quality Gate</th>
+                                <th class="py-3 px-4">Tests (P/F)</th>
+                                <th class="py-3 px-4">Coverage</th>
+                                <th class="py-3 px-4">Duration</th>
+                                <th class="py-3 px-4">Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="runs-tbody" class="divide-y divide-slate-800">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <footer class="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500 no-print">
+        GatePulse Universal CI/CD Quality Gate Platform &bull; Automated Test & Observability Telemetry
+    </footer>
+
+    <script>
+        let currentReport = null;
+        let selectedRepo = new URLSearchParams(window.location.search).get('repo') || 'varaprasad7477/task-api-devops-project';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadReposDropdown();
+            await loadReport(selectedRepo);
+        });
+
+        async function loadReposDropdown() {
+            try {
+                const res = await fetch('/api/repositories');
+                const data = await res.json();
+                const select = document.getElementById('repo-select');
+                select.innerHTML = '';
+
+                (data.repositories || []).forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.repo_name;
+                    opt.textContent = `📁 ${r.repo_name}`;
+                    if (r.repo_name === selectedRepo) opt.selected = true;
+                    select.appendChild(opt);
+                });
+            } catch (e) {
+                console.error("Error loading repositories:", e);
+            }
+        }
+
+        async function switchRepo(repoName) {
+            selectedRepo = repoName;
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('repo', repoName);
+            window.history.pushState({}, '', newUrl);
+            await loadReport(repoName);
+        }
+
+        async function loadReport(repoName) {
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('report-content').classList.add('hidden');
+
+            try {
+                const res = await fetch(`/api/report?repo=${encodeURIComponent(repoName)}`);
+                const data = await res.json();
+                currentReport = data;
+
+                renderReport(data);
+
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('report-content').classList.remove('hidden');
+            } catch (err) {
+                console.error("Error loading report:", err);
+            }
+        }
+
+        function renderReport(data) {
+            const isPassed = data.overall_verdict === 'PASSED';
+            const meta = data.repo_meta || {};
+            const score = data.health_score || 0;
+            const grade = data.health_grade || 'N/A';
+
+            // Hero Banner
+            const hero = document.getElementById('hero-banner');
+            hero.className = `glass-panel rounded-2xl p-6 sm:p-8 transition duration-300 ${isPassed ? 'glow-emerald border-emerald-500/30' : 'glow-rose border-rose-500/30'}`;
+
+            const verdictPill = document.getElementById('verdict-pill');
+            if (isPassed) {
+                verdictPill.className = "px-3 py-1 text-xs font-bold rounded-full border tracking-wide bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+                verdictPill.innerHTML = '<i class="fa-solid fa-shield-check mr-1"></i> Quality Gate: PASSED';
+            } else {
+                verdictPill.className = "px-3 py-1 text-xs font-bold rounded-full border tracking-wide bg-rose-500/20 text-rose-400 border-rose-500/40";
+                verdictPill.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Quality Gate: TRIPPED';
+            }
+
+            document.getElementById('lang-pill').textContent = meta.language || 'Python';
+            document.getElementById('generated-date').textContent = `Audited: ${new Date(data.generated_at).toLocaleString()}`;
+            document.getElementById('repo-heading').textContent = data.repo_name;
+            document.getElementById('github-link').href = meta.html_url || `https://github.com/${data.repo_name}`;
+            document.getElementById('repo-description').textContent = meta.description || 'Repository CI/CD quality standards and pipeline telemetry';
+            document.getElementById('stars-count').textContent = (meta.stars_count || 0).toLocaleString();
+            document.getElementById('forks-count').textContent = (meta.forks_count || 0).toLocaleString();
+            document.getElementById('branch-name').textContent = meta.default_branch || 'main';
+            document.getElementById('runs-analyzed-count').textContent = data.summary.total_runs || 0;
+
+            // Health score
+            document.getElementById('health-score-val').textContent = `${score}/100`;
+            const gradeBadge = document.getElementById('grade-badge');
+            gradeBadge.textContent = grade;
+            if (score >= 90) {
+                gradeBadge.className = "w-14 h-14 rounded-2xl flex items-center justify-center font-extrabold text-2xl border shadow-lg bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+            } else if (score >= 75) {
+                gradeBadge.className = "w-14 h-14 rounded-2xl flex items-center justify-center font-extrabold text-2xl border shadow-lg bg-amber-500/20 text-amber-400 border-amber-500/40";
+            } else {
+                gradeBadge.className = "w-14 h-14 rounded-2xl flex items-center justify-center font-extrabold text-2xl border shadow-lg bg-rose-500/20 text-rose-400 border-rose-500/40";
+            }
+
+            // KPIs
+            document.getElementById('kpi-success').textContent = `${data.summary.success_rate_pct || 0}%`;
+            document.getElementById('kpi-coverage').textContent = `${data.summary.avg_coverage_pct || 0}%`;
+            document.getElementById('kpi-compliance').textContent = `${data.summary.quality_gate_pass_rate_pct || 0}%`;
+            document.getElementById('kpi-duration').textContent = `${data.summary.avg_duration_seconds || 0}s`;
+
+            // Rules Table
+            const rulesTbody = document.getElementById('rules-tbody');
+            rulesTbody.innerHTML = (data.rule_evaluations || []).map(r => {
+                const pass = r.status === 'PASSED';
+                return `
+                    <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 px-4 font-semibold text-white">${escapeHtml(r.rule)}</td>
+                        <td class="py-3 px-4 font-mono text-slate-400">${escapeHtml(r.required)}</td>
+                        <td class="py-3 px-4 font-mono text-slate-100 font-semibold">${escapeHtml(r.actual)}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2.5 py-0.5 rounded text-[11px] font-bold ${pass ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+                                ${r.status}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-slate-300">${escapeHtml(r.details)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Risks
+            const risksList = document.getElementById('risks-list');
+            risksList.innerHTML = (data.risks || []).map(rk => `
+                <li class="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/20 flex items-start gap-2">
+                    <i class="fa-solid fa-circle-exclamation text-rose-400 mt-0.5 text-xs"></i>
+                    <span>${escapeHtml(rk)}</span>
+                </li>
+            `).join('');
+
+            // Recommendations
+            const recsList = document.getElementById('recs-list');
+            recsList.innerHTML = (data.recommendations || []).map(rc => `
+                <li class="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/20 flex items-start gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5 text-xs"></i>
+                    <span>${escapeHtml(rc)}</span>
+                </li>
+            `).join('');
+
+            // Runs table
+            const runsTbody = document.getElementById('runs-tbody');
+            runsTbody.innerHTML = (data.recent_runs || []).map(r => {
+                const isRunPass = r.status === 'success';
+                const isQgPass = r.quality_gate_passed;
+                const ghUrl = r.github_run_id ? `https://github.com/${r.repo_name || data.repo_name}/actions/runs/${r.github_run_id}` : '#';
+                return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3 px-4">
+                            <a href="${ghUrl}" target="_blank" class="font-mono text-emerald-400 hover:underline font-bold">
+                                #${r.id}
+                            </a>
+                        </td>
+                        <td class="py-3 px-4 font-mono text-slate-300">${escapeHtml(r.branch)}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${isRunPass ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+                                ${r.status}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${isQgPass ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+                                ${isQgPass ? 'PASS' : 'TRIPPED'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-mono">
+                            <span class="text-emerald-400 font-bold">${r.tests_passed}</span> / <span class="text-rose-400 font-bold">${r.tests_failed}</span>
+                        </td>
+                        <td class="py-3 px-4 font-bold ${r.coverage_pct >= 80 ? 'text-emerald-400' : 'text-rose-400'}">${r.coverage_pct.toFixed(1)}%</td>
+                        <td class="py-3 px-4 font-mono text-slate-300">${r.duration_seconds.toFixed(1)}s</td>
+                        <td class="py-3 px-4 text-slate-400 whitespace-nowrap">${r.created_at ? new Date(r.created_at).toLocaleDateString() : '--'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function copyMarkdown() {
+            if (!currentReport || !currentReport.markdown_report) return;
+            navigator.clipboard.writeText(currentReport.markdown_report).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check text-emerald-400 text-xs"></i> <span>Copied!</span>';
+                btn.classList.add('border-emerald-500', 'text-emerald-300');
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    btn.classList.remove('border-emerald-500', 'text-emerald-300');
+                }, 2000);
+            });
+        }
+
+        function downloadJson() {
+            if (!currentReport) return;
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentReport, null, 2));
+            const a = document.createElement('a');
+            a.setAttribute("href", dataStr);
+            a.setAttribute("download", `quality-gate-audit-${selectedRepo.replace('/', '_')}.json`);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

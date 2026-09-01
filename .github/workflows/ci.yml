@@ -27,8 +27,33 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run test suite
-        run: pytest -v
+      - name: Run test suite with Coverage & JUnit XML
+        run: |
+          pytest -v --junitxml=report.xml --cov=app --cov-report=xml:coverage.xml --cov-report=json:coverage.json --cov-report=term
+
+      - name: Upload Test and Coverage Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-and-coverage-reports
+          path: |
+            report.xml
+            coverage.xml
+            coverage.json
+          retention-days: 14
+
+      - name: Verify CI Quality Gate & Publish Telemetry
+        if: always()
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+        run: |
+          python scripts/ci_quality_gate.py --min-coverage 80.0 --max-failures 0 --enforce
 
   build-and-push:
     needs: test
